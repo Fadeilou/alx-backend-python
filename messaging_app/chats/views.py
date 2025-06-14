@@ -1,4 +1,4 @@
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -22,12 +22,20 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
     lookup_field = 'user_id'
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['username', 'email', 'first_name', 'last_name']
+    ordering_fields = ['username', 'email', 'created_at']
+    ordering = ['username']
 
 
 class ConversationViewSet(viewsets.ModelViewSet):
     """ViewSet for managing conversations."""
     permission_classes = [IsAuthenticated]
     lookup_field = 'conversation_id'
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['participants__username', 'participants__email']
+    ordering_fields = ['created_at', 'updated_at']
+    ordering = ['-updated_at']
     
     def get_queryset(self):
         """Return conversations for the current user."""
@@ -125,6 +133,10 @@ class MessageViewSet(viewsets.ModelViewSet):
     serializer_class = MessageSerializer
     permission_classes = [IsAuthenticated]
     lookup_field = 'message_id'
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['message_body', 'sender__username', 'sender__email']
+    ordering_fields = ['sent_at', 'message_body']
+    ordering = ['-sent_at']
     
     def get_queryset(self):
         """Return messages for conversations the user participates in."""

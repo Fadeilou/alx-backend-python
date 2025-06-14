@@ -1,0 +1,12 @@
+# Request logs will be written here
+# Format: Timestamp - User: username - Path: request_path
+2025-06-14 17:36:10.107618 - User: Anonymous - Path: /
+Not Found: /
+2025-06-14 17:36:23.200993 - User: Anonymous - Path: /admin/
+2025-06-14 17:36:23.252487 - User: Anonymous - Path: /admin/login/
+2025-06-14 17:36:31.638571 - User: Anonymous - Path: /admin/login/
+2025-06-14 17:36:39.212276 - User: Anonymous - Path: /admin/login/
+2025-06-14 17:36:40.114643 - User: Anonymous - Path: /
+Not Found: /
+2025-06-14 17:36:51.598536 - User: Anonymous - Path: /api/
+Unauthorized: /api/

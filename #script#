@@ -1,0 +1,9 @@
+cd "/home/fadel/Workspaces/ALX PROJECT/alx-backend-python/messaging_app" && which python && echo $VIRTUAL_ENV
+cd "/home/fadel/Workspaces/ALX PROJECT/alx-backend-python/messaging_app" && python3 -m venv venv && source venv/bin/activate && pip install djangorestframework-simplejwt django-filter
+cd "/home/fadel/Workspaces/ALX PROJECT/alx-backend-python/messaging_app" && pip install --break-system-packages djangorestframework-simplejwt django-filter
+cd "/home/fadel/Workspaces/ALX PROJECT/alx-backend-python/messaging_app" && pip install --break-system-packages drf-nested-routers
+cd "/home/fadel/Workspaces/ALX PROJECT/alx-backend-python/messaging_app" && python manage.py makemigrations
+cd "/home/fadel/Workspaces/ALX PROJECT/alx-backend-python/messaging_app" && python manage.py migrate
+cd "/home/fadel/Workspaces/ALX PROJECT/alx-backend-python/messaging_app" && mkdir -p post_man-Collections
+cd "/home/fadel/Workspaces/ALX PROJECT/alx-backend-python/messaging_app" && python manage.py check
+cd "/home/fadel/Workspaces/ALX PROJECT/alx-backend-python/messaging_app" && chmod +x test_api.py

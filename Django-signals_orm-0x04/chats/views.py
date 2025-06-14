@@ -35,37 +35,29 @@ class UserViewSet(viewsets.ModelViewSet):
     ordering = ['username']
     pagination_class = UserPagination
     
-    def get_permissions(self):
-        """
-        Instantiate and return the list of permissions required for this view.
-        Only allow users to delete their own account.
-        """
-        if self.action == 'destroy':
-            return [IsAuthenticated()]
-        return super().get_permissions()
-    
-    def destroy(self, request, *args, **kwargs):
-        """
-        Delete user account with proper authorization.
-        Users can only delete their own account.
-        """
-        user_to_delete = self.get_object()
-        
-        # Check if the user is trying to delete their own account
-        if user_to_delete.user_id != request.user.user_id:
+    @action(detail=True, methods=['delete'])
+    def delete_user(self, request, user_id=None):
+        """Delete a user account and trigger cleanup signals."""
+        try:
+            user = self.get_object()
+            if user != request.user and not request.user.is_superuser:
+                return Response(
+                    {'error': 'You can only delete your own account'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            user_email = user.email
+            user.delete()  # This will trigger the post_delete signal
+            
             return Response(
-                {'error': 'You can only delete your own account'},
-                status=status.HTTP_403_FORBIDDEN
+                {'message': f'User {user_email} deleted successfully'},
+                status=status.HTTP_200_OK
             )
-        
-        # Perform the deletion - signals will handle cleanup
-        user_email = user_to_delete.email
-        self.perform_destroy(user_to_delete)
-        
-        return Response(
-            {'message': f'Account for {user_email} has been successfully deleted'},
-            status=status.HTTP_200_OK
-        )
+        except User.DoesNotExist:
+            return Response(
+                {'error': 'User not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
 
 class ConversationViewSet(viewsets.ModelViewSet):
@@ -274,14 +266,24 @@ class MessageViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def unread(self, request):
         """Get unread messages for the current user using custom manager."""
-        unread_messages = Message.unread.for_user(request.user)
+        conversation_id = request.query_params.get('conversation_id')
         
-        # Use only() to limit fields for performance
-        unread_messages = unread_messages.only(
-            'message_id', 'message_body', 'sent_at', 
-            'sender__first_name', 'sender__last_name', 'sender__email',
-            'conversation__conversation_id'
-        )
+        if conversation_id:
+            try:
+                conversation = Conversation.objects.get(
+                    conversation_id=conversation_id,
+                    participants=request.user
+                )
+                unread_messages = Message.unread.for_user(request.user).filter(
+                    conversation=conversation
+                )
+            except Conversation.DoesNotExist:
+                return Response(
+                    {'error': 'Conversation not found'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+        else:
+            unread_messages = Message.unread.for_user(request.user)
         
         page = self.paginate_queryset(unread_messages)
         if page is not None:
@@ -326,7 +328,7 @@ class MessageViewSet(viewsets.ModelViewSet):
             
             # Recursive query to get all replies in threaded format
             def get_replies_recursive(message, depth=0, max_depth=5):
-                if depth >= max_depth:
+                if depth > max_depth:
                     return []
                 
                 replies = Message.objects.filter(
@@ -340,11 +342,11 @@ class MessageViewSet(viewsets.ModelViewSet):
                         'message_body': reply.message_body,
                         'sender': {
                             'user_id': reply.sender.user_id,
-                            'name': f"{reply.sender.first_name} {reply.sender.last_name}",
-                            'email': reply.sender.email
+                            'first_name': reply.sender.first_name,
+                            'last_name': reply.sender.last_name,
                         },
                         'sent_at': reply.sent_at,
-                        'depth': depth,
+                        'depth': depth + 1,
                         'replies': get_replies_recursive(reply, depth + 1, max_depth)
                     }
                     result.append(reply_data)
@@ -368,12 +370,12 @@ class MessageViewSet(viewsets.ModelViewSet):
                     'message_body': parent_message.message_body,
                     'sender': {
                         'user_id': parent_message.sender.user_id,
-                        'name': f"{parent_message.sender.first_name} {parent_message.sender.last_name}",
-                        'email': parent_message.sender.email
+                        'first_name': parent_message.sender.first_name,
+                        'last_name': parent_message.sender.last_name,
                     },
                     'sent_at': parent_message.sent_at,
                 },
-                'replies': threaded_replies,
+                'threaded_replies': threaded_replies,
                 'total_replies': len(threaded_replies)
             })
             
@@ -384,7 +386,7 @@ class MessageViewSet(viewsets.ModelViewSet):
             )
     
     @action(detail=True, methods=['get'])
-    def history(self, request, message_id=None):
+    def edit_history(self, request, message_id=None):
         """Get edit history for a specific message."""
         try:
             message = self.get_object()
@@ -404,23 +406,30 @@ class MessageViewSet(viewsets.ModelViewSet):
             ).order_by('-edited_at')
             
             history_data = []
-            for record in history:
+            for entry in history:
                 history_data.append({
-                    'history_id': record.history_id,
-                    'old_content': record.old_content,
-                    'edited_at': record.edited_at
+                    'history_id': entry.history_id,
+                    'old_content': entry.old_content,
+                    'edited_at': entry.edited_at,
                 })
             
             return Response({
                 'message_id': message.message_id,
                 'current_content': message.message_body,
-                'is_edited': message.edited,
-                'history': history_data,
+                'edited': message.edited,
+                'edit_history': history_data,
                 'total_edits': len(history_data)
             })
             
         except Message.DoesNotExist:
             return Response(
                 {'error': 'Message not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+            return Response(serializer.data)
+            
+        except Conversation.DoesNotExist:
+            return Response(
+                {'error': 'Conversation not found or you are not a participant'},
                 status=status.HTTP_404_NOT_FOUND
             )

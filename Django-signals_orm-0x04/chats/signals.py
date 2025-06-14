@@ -21,21 +21,19 @@ def create_message_notification(sender, instance, created, **kwargs):
     Signal handler to create notifications when a new message is created.
     
     This signal is triggered after a Message instance is saved.
-    It creates notifications for all participants in the conversation
-    except the sender.
+    For direct messages: creates notification for the receiver
+    For group conversations: creates notifications for all participants except sender
     """
     if created:
-        # Get all participants in the conversation except the sender
-        participants = instance.conversation.participants.exclude(
-            user_id=instance.sender.user_id
-        )
+        # Get recipients using the message's get_receivers method
+        recipients = instance.get_receivers()
         
-        # Create notifications for each participant
+        # Create notifications for each recipient
         notifications_to_create = []
-        for participant in participants:
+        for recipient in recipients:
             notifications_to_create.append(
                 Notification(
-                    user=participant,
+                    user=recipient,
                     message=instance,
                     notification_type='new_message'
                 )
@@ -44,6 +42,9 @@ def create_message_notification(sender, instance, created, **kwargs):
         # Bulk create notifications for efficiency
         if notifications_to_create:
             Notification.objects.bulk_create(notifications_to_create)
+            
+            # Log notification creation for debugging
+            print(f"Created {len(notifications_to_create)} notifications for message {instance.message_id}")
 
 
 @receiver(pre_save, sender=Message)

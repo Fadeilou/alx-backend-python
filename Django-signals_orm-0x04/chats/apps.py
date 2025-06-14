@@ -6,5 +6,5 @@ class ChatsConfig(AppConfig):
     name = 'chats'
     
     def ready(self):
-        """Import signals when the app is ready."""
+        """Import signal handlers when the app is ready."""
         import chats.signals

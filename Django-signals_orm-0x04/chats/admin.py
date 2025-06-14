@@ -36,9 +36,9 @@ class ConversationAdmin(admin.ModelAdmin):
 @admin.register(Message)
 class MessageAdmin(admin.ModelAdmin):
     """Admin configuration for Message model."""
-    list_display = ('message_id', 'sender', 'conversation', 'message_preview', 'sent_at', 'edited', 'read')
+    list_display = ('message_id', 'sender', 'receiver', 'conversation', 'message_preview', 'sent_at', 'edited', 'read')
     list_filter = ('sent_at', 'edited', 'read')
-    search_fields = ('sender__email', 'sender__username', 'message_body')
+    search_fields = ('sender__email', 'sender__username', 'receiver__email', 'receiver__username', 'message_body')
     readonly_fields = ('message_id', 'sent_at')
     
     def message_preview(self, obj):

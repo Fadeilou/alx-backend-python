@@ -68,13 +68,21 @@ class Message(models.Model):
         on_delete=models.CASCADE, 
         related_name='sent_messages'
     )
+    receiver = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='received_messages',
+        null=True,
+        blank=True,
+        help_text="Direct message receiver (for 1-on-1 messages)"
+    )
     conversation = models.ForeignKey(
         Conversation, 
         on_delete=models.CASCADE, 
         related_name='messages'
     )
-    message_body = models.TextField()
-    sent_at = models.DateTimeField(auto_now_add=True)
+    message_body = models.TextField(help_text="Message content")
+    sent_at = models.DateTimeField(auto_now_add=True, help_text="Message timestamp")
     edited = models.BooleanField(default=False)
     read = models.BooleanField(default=False)
     parent_message = models.ForeignKey(
@@ -94,6 +102,15 @@ class Message(models.Model):
     
     def __str__(self):
         return f"Message from {self.sender} at {self.sent_at}: {self.message_body[:50]}..."
+    
+    def get_receivers(self):
+        """Get all users who should receive notifications for this message."""
+        if self.receiver:
+            # Direct message - single receiver
+            return [self.receiver]
+        else:
+            # Group conversation - all participants except sender
+            return self.conversation.participants.exclude(user_id=self.sender.user_id)
 
 
 class MessageHistory(models.Model):

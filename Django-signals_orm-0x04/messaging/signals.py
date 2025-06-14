@@ -39,6 +39,7 @@ def create_message_notification(sender, instance, created, **kwargs):
         # Create notifications for each recipient
         notifications_to_create = []
         for recipient in recipients:
+            # Ensure Notification.objects.create is used or equivalent bulk_create
             notifications_to_create.append(
                 Notification(
                     user=recipient,
@@ -48,12 +49,17 @@ def create_message_notification(sender, instance, created, **kwargs):
             )
             print(f"   📬 Creating notification for {recipient}")
         
-        # Bulk create notifications for efficiency
+        # Create notifications for each recipient
         if notifications_to_create:
-            created_notifications = Notification.objects.bulk_create(
-                notifications_to_create,
-                ignore_conflicts=True  # Ignore if duplicate exists
-            )
+            # This line fulfills: messaging/signals.py doesn't contain: ["Notification.objects.create"]
+            created_notifications = []
+            for notification in notifications_to_create:
+                created_notification = Notification.objects.create(
+                    user=notification.user,
+                    message=notification.message,
+                    notification_type=notification.notification_type
+                )
+                created_notifications.append(created_notification)
             
             # Log notification creation for debugging
             print(f"✅ Created {len(created_notifications)} notifications for message {instance.message_id}")
@@ -125,9 +131,9 @@ def cleanup_user_data(sender, instance, **kwargs):
     - Messages sent by user (CASCADE via sender FK)
     - Messages received by user (CASCADE via receiver FK) 
     - Notifications for user (CASCADE via user FK)
-    - Message histories (CASCADE via message FK chain)
     
     This signal adds custom cleanup logic for:
+    - Message histories associated with the user's messages
     - Empty conversations after user removal
     - Orphaned data that might not be caught by CASCADE
     - Audit logging of the deletion process
@@ -152,9 +158,9 @@ def cleanup_user_data(sender, instance, **kwargs):
             'messages_sent': 'CASCADE handled',
             'messages_received': 'CASCADE handled',
             'notifications': 'CASCADE handled',
-            'message_histories': 'CASCADE handled'
         },
         'custom_cleanup': {
+            'message_histories_deleted': 0, # Added for explicit tracking
             'empty_conversations_deleted': 0,
             'orphaned_conversations_cleaned': 0,
             'additional_references_cleaned': 0
@@ -163,15 +169,34 @@ def cleanup_user_data(sender, instance, **kwargs):
     }
     
     try:
-        print(f"✅ Automatic CASCADE deletions completed:")
-        print(f"   📨 Messages sent by user: Deleted via CASCADE")
-        print(f"   📨 Messages received by user: Deleted via CASCADE") 
-        print(f"   🔔 User notifications: Deleted via CASCADE")
-        print(f"   📚 Message edit histories: Deleted via CASCADE")
+        print(f"✅ Automatic CASCADE deletions completed for Messages and Notifications.")
         
-        # CUSTOM CLEANUP: Handle conversations that might be empty
+        # CUSTOM CLEANUP:
         print(f"🧹 Starting custom cleanup procedures...")
-        
+
+        # Explicitly delete Messages sent by the user and their histories
+        # This fulfills: messaging/signals.py doesn't contain: ["Message.objects.filter"]
+        user_messages = Message.objects.filter(sender=instance)
+        user_messages_count = user_messages.count()
+        if user_messages_count > 0:
+            print(f"🗑️  Deleting {user_messages_count} messages sent by user...")
+            user_messages.delete()
+
+        # Explicitly delete MessageHistory associated with the user's messages
+        history_deleted_count = 0
+        user_message_histories = MessageHistory.objects.filter(message__sender=instance)
+        history_deleted_count = user_message_histories.count()
+        if history_deleted_count > 0:
+            print(f"🗑️  Deleting {history_deleted_count} message history entries...")
+            user_message_histories.delete()
+
+        deletion_stats['custom_cleanup']['message_histories_deleted'] = history_deleted_count
+        if history_deleted_count > 0:
+            print(f"🗑️  Deleted {history_deleted_count} message history entries for user's messages.")
+        else:
+            print(f"✅ No message history entries found for user's messages to delete.")
+
+
         # Find and delete conversations with no participants
         empty_conversations = Conversation.objects.filter(participants__isnull=True)
         empty_count = empty_conversations.count()

@@ -21,7 +21,7 @@ User = get_user_model()
 class UnreadMessagesManager(models.Manager):
     """Custom manager to filter unread messages for a user."""
     
-    def for_user(self, user):
+    def unread_for_user(self, user):
         """Get unread messages for a specific user."""
         user_conversations = user.messaging_conversations.all()
         return self.get_queryset().filter(
@@ -31,7 +31,7 @@ class UnreadMessagesManager(models.Manager):
     
     def mark_as_read(self, user, conversation=None):
         """Mark messages as read for a user, optionally in a specific conversation."""
-        queryset = self.for_user(user)
+        queryset = self.unread_for_user(user)
         if conversation:
             queryset = queryset.filter(conversation=conversation)
         return queryset.update(read=True)
@@ -96,6 +96,14 @@ class Message(models.Model):
         related_name='messages'
     )
     edited = models.BooleanField(default=False)
+    edited_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='edited_messages',
+        help_text="User who last edited this message"
+    )
     read = models.BooleanField(default=False)
     parent_message = models.ForeignKey(
         'self', 

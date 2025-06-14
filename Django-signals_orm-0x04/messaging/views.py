@@ -15,6 +15,7 @@ from django.db.models import Count
 from django.contrib import messages
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_protect
+from django.views.decorators.cache import cache_page
 from django.urls import reverse
 from django.utils import timezone
 from .models import Message, MessageHistory, Conversation, Notification

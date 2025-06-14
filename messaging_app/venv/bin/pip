@@ -1,4 +1,6 @@
-#!/home/fadel/Workspaces/alx-backend-python/messaging_app/venv/bin/python3
+#!/bin/sh
+'''exec' "/home/fadel/Workspaces/ALX PROJECT/alx-backend-python/messaging_app/venv/bin/python3" "$0" "$@"
+' '''
 # -*- coding: utf-8 -*-
 import re
 import sys

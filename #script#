@@ -1,4 +1,3 @@
-mkdir -p "/home/fadel/Workspaces/ALX PROJECT/alx-backend-python/Django-signals_orm-0x04"
-cd "/home/fadel/Workspaces/ALX PROJECT/alx-backend-python/Django-signals_orm-0x04" && cp -r ../messaging_app/* .
-wc -l "/home/fadel/Workspaces/ALX PROJECT/alx-backend-python/Django-signals_orm-0x04/chats/views.py"
-tail -20 "/home/fadel/Workspaces/ALX PROJECT/alx-backend-python/Django-signals_orm-0x04/chats/views.py"
+. "/tmp/.mount_CursorbXiCX1/usr/share/cursor/resources/app/out/vs/workbench/contrib/terminal/common/scripts/shellIntegration-bash.sh"
+
+cd messaging_app && chmod +x start.sh

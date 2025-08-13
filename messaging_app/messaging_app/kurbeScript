@@ -1,0 +1,32 @@
+#!/bin/bash
+
+# Ensure script exits on any error
+set -e
+
+# Function to install Minikube
+install_minikube() {
+    echo "Minikube not found. Installing Minikube..."
+    curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+    sudo install minikube-linux-amd64 /usr/local/bin/minikube
+    rm minikube-linux-amd64
+    echo "Minikube installed successfully."
+}
+
+# Check if Minikube is installed
+if ! command -v minikube &> /dev/null; then
+    install_minikube
+else
+    echo "Minikube is already installed."
+fi
+
+# Start Minikube cluster
+echo "Starting Kubernetes cluster..."
+minikube start
+
+# Verify cluster status
+echo "Verifying cluster status..."
+kubectl cluster-info
+
+# Retrieve all pods in all namespaces
+echo "Retrieving pod information..."
+kubectl get pods -A

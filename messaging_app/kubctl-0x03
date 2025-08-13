@@ -1,0 +1,49 @@
+#!/bin/bash
+set -e
+
+# Apply updated deployment
+echo "🚀 Starting rolling update..."
+kubectl apply -f blue_deployment.yaml
+
+# Start port-forwarding
+echo "🔌 Establishing connection..."
+kubectl port-forward svc/messaging-app-service 8080:80 > /dev/null 2>&1 &
+PORT_FORWARD_PID=$!
+sleep 5
+
+# Start continuous health checks
+echo "🔄 Running continuous health checks..."
+TMP_LOG=$(mktemp)
+( while true; do
+    if curl -sSf http://localhost:8080/health > /dev/null; then
+        echo "$(date) - OK" >> $TMP_LOG
+    else
+        echo "$(date) - FAIL" >> $TMP_LOG
+    fi
+    sleep 0.5
+done ) &
+CURL_PID=$!
+
+# Monitor rollout
+echo "👀 Monitoring rollout progress..."
+kubectl rollout status deployment/messaging-app-blue --timeout=300s
+
+# Cleanup
+echo "🛑 Stopping background processes..."
+kill $CURL_PID
+kill $PORT_FORWARD_PID
+
+# Check results
+FAILURES=$(grep "FAIL" $TMP_LOG | wc -l)
+SUCCESS=$(grep "OK" $TMP_LOG | wc -l)
+rm $TMP_LOG
+
+echo "✅ Successful requests: $SUCCESS"
+echo "❌ Failed requests: $FAILURES"
+
+# Verify pods
+echo "🔍 Checking pod versions:"
+kubectl get pods -l app=messaging-app -l version=blue \
+  -o jsonpath='{range .items[*]}{.metadata.name}: {.spec.containers[0].image}{"\n"}{end}'
+
+[ $FAILURES -gt 0 ] && exit 1 || exit 0

@@ -1,0 +1,14 @@
+# messaging_app/kubeservice.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: messaging-app-service
+spec:
+  type: ClusterIP
+  selector:
+    app: messaging-app
+    version: blue  # Initial traffic to blue
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8000

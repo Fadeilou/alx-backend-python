@@ -1,0 +1,118 @@
+// messaging_app/Jenkinsfile
+pipeline {
+    agent any
+    options {
+        skipDefaultCheckout(true)
+        disableConcurrentBuilds()
+        timeout(time: 15, unit: 'MINUTES')
+    }
+    
+    triggers {
+        // Manual trigger only
+    }
+    
+    environment {
+        PROJECT_DIR = 'messaging_app'
+        VENV_NAME = 'django-env'
+        PYTHON_VERSION = '3.9'
+    }
+
+    stages {
+        stage('Checkout Code') {
+            steps {
+                git(
+                    url: 'https://github.com/kariukikinyanjui/alx-backend-python.git',
+                    credentialsId: 'github-credentials',
+                    branch: 'git branch main'
+                )
+                dir(env.PROJECT_DIR) {
+                    script {
+                        currentBuild.displayName = "#${BUILD_NUMBER} - ${env.GIT_COMMIT.take(8)}"
+                    }
+                }
+            }
+        }
+
+        stage('Setup Virtual Environment') {
+            steps {
+                dir(env.PROJECT_DIR) {
+                    shiningPanda {
+                        virtualenv {
+                            name = env.VENV_NAME
+                            python = env.PYTHON_VERSION
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                dir(env.PROJECT_DIR) {
+                    sh """
+                        . ${env.VENV_NAME}/bin/activate
+                        python -m pip3 install --upgrade pip
+                        pip3 install -r messaging_app/requirements.txt
+                    """
+                }
+            }
+        }
+
+        stage('Run Tests') {
+            steps {
+                dir(env.PROJECT_DIR) {
+                    sh """
+                        . ${env.VENV_NAME}/bin/activate
+                        pytest --junitxml=test-results.xml --cov=.
+                    """
+                }
+            }
+            post {
+                always {
+                    junit allowEmptyResults: true, 
+                        testResults: "${env.PROJECT_DIR}/test-results.xml"
+                    cobertura coberturaReportFile: "${env.PROJECT_DIR}/coverage.xml"
+                }
+            }
+        }
+    }
+
+    stage('Build Docker Image') {
+            steps {
+                dir(env.PROJECT_DIR) {
+                    script {
+                        dockerImage = docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}",
+                            "-f ${DOCKERFILE_PATH} ."
+                        )
+                    }
+                }
+            }
+        }
+
+        stage('Push Docker Image') {
+            steps {
+                script {
+                    docker.withRegistry('https://registry.hub.docker.com', 'dockerhub-credentials') {
+                        dockerImage.push("${DOCKER_TAG}")
+                        dockerImage.push('latest')
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            cleanWs()
+            script {
+                currentBuild.description = "Build ${currentBuild.result ?: 'SUCCESS'}"
+            }
+        }
+        success {
+            slackSend color: 'good', message: "Build ${currentBuild.url} succeeded"
+        }
+        failure {
+            slackSend color: 'danger', message: "Build ${currentBuild.url} failed"
+        }
+    }
+}

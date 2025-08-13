@@ -1,0 +1,16 @@
+[
+  {
+    "id": "<conversation_id>",
+    "participants": [
+      {
+        "id": "user1_id",
+        "username": "user1"
+      },
+      {
+        "id": "user2_id",
+        "username": "user2"
+      }
+    ],
+    "created_at": "2024-01-01T12:00:00Z"
+  }
+]

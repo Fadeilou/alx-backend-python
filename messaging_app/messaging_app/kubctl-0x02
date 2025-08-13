@@ -1,0 +1,17 @@
+#!/bin/bash
+set -e
+
+# Deploy blue and green versions
+kubectl apply -f blue_deployment.yaml
+kubectl apply -f green_deployment.yaml
+
+# Apply service configuration
+kubectl apply -f kubeservice.yaml
+
+# Check green deployment logs
+echo "Checking green deployment logs:"
+GREEN_PODS=$(kubectl get pods -l version=green -o name)
+for pod in $GREEN_PODS; do
+  echo "Logs for $pod:"
+  kubectl logs $pod --tail=50
+done

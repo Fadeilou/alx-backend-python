@@ -32,13 +32,13 @@ class IsParticipantOfConversation(permissions.BasePermission):
             return ConversationParticipant.objects.filter(
                 conversation=obj.conversation,
                 user=request.user
-            ).exists()
+            ).exists() and request.method in ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']
 
         # For conversations directly
         if isinstance(obj, Conversation):
             return ConversationParticipant.objects.filter(
                 conversation=obj,
                 user=request.user
-            ).exists()
+            ).exists() and request.method in ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']
 
         return False

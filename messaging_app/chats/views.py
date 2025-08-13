@@ -6,6 +6,9 @@ from .models import User, Conversation, Message, ConversationParticipant
 from .serializers import ConversationSerializer, MessageSerializer
 from .permissions import IsOwnerOrParticipant
 from .permissions import IsParticipantOfConversation
+from .pagination import MessagePagination
+from .filters import MessageFilter
+import django_filters.rest_framework
 
 
 class ConversationViewSet(viewsets.ModelViewSet):
@@ -15,6 +18,9 @@ class ConversationViewSet(viewsets.ModelViewSet):
     filter_backends = [filters.OrderingFilter]
     ordering_fields = ['created_at']
     ordering = ['-created_at']
+
+    def permission_denied(self, request, message=None):
+        return Response({"detail": message or "You do not have permission to perform this action."}, status=status.HTTP_403_FORBIDDEN)
 
     def get_queryset(self):
         # Get conversations where the current user is a participant
@@ -45,7 +51,12 @@ class MessageViewSet(viewsets.ModelViewSet):
     http_method_names = ['get', 'post']  # Only allow list and create
     ordering = ['sent_at']
     ordering_fields = ['sent_at']
-    filter_backends = [filters.OrderingFilter]
+    filter_backends = [filters.OrderingFilter, django_filters.rest_framework.DjangoFilterBackend]
+    pagination_class = MessagePagination
+    filterset_class = MessageFilter
+
+    def permission_denied(self, request, message=None):
+        return Response({"detail": message or "You do not have permission to perform this action."}, status=status.HTTP_403_FORBIDDEN)
 
     def get_queryset(self):
         return Message.objects.filter(
